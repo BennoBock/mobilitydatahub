@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="An open specification for exchanging observed, estimated, modelled, and synthetic mobility demand data — counts, flows, routes, and mode shares — in one common model.">
+<title>Mobility Demand Exchange Specification</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap header-inner">
+    <a href="#" class="wordmark"><strong>Mobility Demand</strong> Exchange Specification</a>
+    <nav>
+      <ul>
+        <li><a href="#scope">Spec</a></li>
+        <li><a href="#example">Schema</a></li>
+        <li><a href="#status">Status</a></li>
+        <li><a href="#governance">Governance</a></li>
+        <li><a href="#" class="nav-cta">GitHub &#8599;</a></li>
+      </ul>
+    </nav>
+    <i class="mobile-toggle">&#9776;</i>
+  </div>
+</header>
+
+<main>
+
+  <!-- ======= Hero ======= -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Open specification &middot; Draft 0.3</p>
+        <h1>One shared format for how people move.</h1>
+        <p class="lede">A mode-neutral, aggregation-neutral model for publishing mobility demand — counts, origin/destination flows, routed movements, and standalone mode-share statistics — so it can be validated, compared, and converted without a bespoke format per source.</p>
+        <div class="hero-actions">
+          <a href="#scope" class="btn btn-primary">Read the specification</a>
+          <a href="#" class="btn btn-ghost">View on GitHub</a>
+        </div>
+      </div>
+      <div>
+        <svg class="hero-diagram" viewBox="0 0 520 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing multiple mobility data sources converging into one shared demand model, then diverging into multiple compatible output formats.">
+          <!-- converge lines: sources -> center -->
+          <g fill="none" stroke="#9db4cc" stroke-width="1.5">
+            <path d="M100,60 C210,60 210,190 250,196"/>
+            <path d="M100,140 C200,140 220,190 250,200"/>
+            <path d="M100,220 C200,220 220,205 250,204"/>
+            <path d="M100,300 C210,300 210,215 250,208"/>
+          </g>
+          <!-- diverge lines: center -> outputs -->
+          <g fill="none" stroke="#3d5a80" stroke-width="1.5">
+            <path d="M270,196 C310,190 400,80 440,70"/>
+            <path d="M270,200 C320,196 400,150 440,145"/>
+            <path d="M270,204 C320,208 400,255 440,258"/>
+            <path d="M270,208 C310,220 400,320 440,330"/>
+          </g>
+
+          <!-- source labels -->
+          <g font-family="Gratimo Classic Regular, sans-serif" font-size="12" fill="#1c1f1e">
+            <circle cx="94" cy="60" r="3" fill="#3d5a80"/>
+            <text x="10" y="55">Sensor count</text>
+            <text x="10" y="68" fill="#63685f" font-size="10">observed</text>
+
+            <circle cx="94" cy="140" r="3" fill="#3d5a80"/>
+            <text x="10" y="135">Household survey</text>
+            <text x="10" y="148" fill="#63685f" font-size="10">estimated</text>
+
+            <circle cx="94" cy="220" r="3" fill="#3d5a80"/>
+            <text x="10" y="215">MATSim run</text>
+            <text x="10" y="228" fill="#63685f" font-size="10">modelled</text>
+
+            <circle cx="94" cy="300" r="3" fill="#3d5a80"/>
+            <text x="10" y="295">Scraped listing</text>
+            <text x="10" y="308" fill="#63685f" font-size="10">reported</text>
+          </g>
+
+          <!-- center node -->
+          <rect x="182" y="176" width="136" height="44" rx="8" fill="#1c1f1e"/>
+          <text x="250" y="194" text-anchor="middle" fill="#f6f6f3" font-family="Gratimo Classic Bold, sans-serif" font-size="11">Demand</text>
+          <text x="250" y="210" text-anchor="middle" fill="#f6f6f3" font-family="Gratimo Classic Bold, sans-serif" font-size="11">Observation</text>
+
+          <!-- output labels -->
+          <g font-family="Gratimo Classic Regular, sans-serif" font-size="12" fill="#1c1f1e" text-anchor="end">
+            <circle cx="446" cy="70" r="3" fill="#3d5a80"/>
+            <text x="510" y="66">GTFS</text>
+
+            <circle cx="446" cy="145" r="3" fill="#3d5a80"/>
+            <text x="510" y="141">MDS</text>
+
+            <circle cx="446" cy="258" r="3" fill="#3d5a80"/>
+            <text x="510" y="254">OMX</text>
+
+            <circle cx="446" cy="330" r="3" fill="#3d5a80"/>
+            <text x="510" y="326">GeoJSON</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= The problem ======= -->
+  <section id="problem">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Why this exists</p>
+        <h2>Demand data doesn't have a home format</h2>
+        <p class="muted">Adjacent standards each solve a different, narrower problem — none of them model mobility <em>demand</em> itself, at every level of detail it's actually published at.</p>
+      </div>
+      <div class="gap-list">
+        <div class="gap-row">
+          <div class="fmt">GTFS</div>
+          <p>Describes scheduled supply — routes, stops, timetables. It has no way to carry an observed or modelled demand figure at all.</p>
+        </div>
+        <div class="gap-row">
+          <div class="fmt">MDS</div>
+          <p>Captures individual shared-mobility trip records for regulatory reporting — not aggregate counts, survey-expanded totals, or standalone mode-share statistics.</p>
+        </div>
+        <div class="gap-row">
+          <div class="fmt">OMX</div>
+          <p>A matrix container for OD data — efficient storage, but no shared metadata model for provenance, uncertainty, privacy status, or mode.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Scope ======= -->
+  <section id="scope">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Scope</p>
+        <h2>Six ways to describe demand</h2>
+        <p class="muted">Every record is a <span class="mono">DemandObservation</span> — the same core model, at whatever level of detail a source actually publishes.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <span class="tag">count</span>
+          <h4>Count</h4>
+          <p>A quantity observed at a point, link, stop, or station — e.g. cyclists passing a counter.</p>
+        </div>
+        <div class="card">
+          <span class="tag">origin_total</span>
+          <h4>Origin total</h4>
+          <p>Trips or movements beginning at a spatial object — e.g. person-trips originating in a zone.</p>
+        </div>
+        <div class="card">
+          <span class="tag">destination_total</span>
+          <h4>Destination total</h4>
+          <p>Trips or movements ending at a spatial object over a stated period.</p>
+        </div>
+        <div class="card">
+          <span class="tag">od_flow</span>
+          <h4>Origin&ndash;destination flow</h4>
+          <p>A quantity moving between an origin and a destination — a zone-to-zone matrix cell.</p>
+        </div>
+        <div class="card">
+          <span class="tag">routed_flow</span>
+          <h4>Routed flow</h4>
+          <p>An OD flow associated with a route — a geometry, link sequence, or timestamped trajectory.</p>
+        </div>
+        <div class="card">
+          <span class="tag">modal_share</span>
+          <h4>Modal share</h4>
+          <p>A standalone aggregated mode share, published on its own without requiring the underlying per-mode records.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Design principles ======= -->
+  <section id="principles">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Design principles</p>
+        <h2>What the model has to hold true</h2>
+      </div>
+      <div class="grid-3" style="row-gap: 1.6rem;">
+        <div class="principle">
+          <h4>Mode-neutral</h4>
+          <p>Walking, cycling, private vehicles, public transport, shared mobility, freight, and modes not yet defined.</p>
+        </div>
+        <div class="principle">
+          <h4>Aggregation-neutral</h4>
+          <p>One observed trip, an expanded survey, a modelled estimate, and a standalone aggregate share — one model.</p>
+        </div>
+        <div class="principle">
+          <h4>Source-transparent</h4>
+          <p>Every record states whether it's observed, reported, estimated, imputed, modelled, simulated, or synthetic.</p>
+        </div>
+        <div class="principle">
+          <h4>Privacy-aware</h4>
+          <p>Built for aggregation, suppression, and generalization. Never requires personal data.</p>
+        </div>
+        <div class="principle">
+          <h4>Compatible, not competing</h4>
+          <p>Maps to GTFS-ride, DATEX II, MDS, OMX, GMNS, MATSim, SUMO — doesn't replace what already works.</p>
+        </div>
+        <div class="principle">
+          <h4>Extensible</h4>
+          <p>Publishers add domain-specific fields through namespaced extensions, without changing core meaning.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Example record ======= -->
+  <section id="example">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Schema</p>
+        <h2>What a record looks like</h2>
+        <p class="muted">A standalone modal-share record — five rows like this, one per mode, is a complete, valid dataset on its own.</p>
+      </div>
+      <div class="code-block"><pre style="margin:0"><span class="k">{</span>
+  <span class="k">"demand_type"</span>: <span class="s">"modal_share"</span>,
+  <span class="k">"measure"</span>: <span class="k">{</span>
+    <span class="k">"value"</span>: 0.42,
+    <span class="k">"unit"</span>: <span class="s">"percentage"</span>,
+    <span class="k">"statistic"</span>: <span class="s">"share"</span>,
+    <span class="k">"denominator"</span>: <span class="k">{</span>
+      <span class="k">"population"</span>: <span class="s">"residents"</span>,
+      <span class="k">"included_modes"</span>: [<span class="s">"car"</span>, <span class="s">"public_transport"</span>, <span class="s">"cycling"</span>, <span class="s">"walking"</span>, <span class="s">"other"</span>]
+    <span class="k">}</span>
+  <span class="k">}</span>,
+  <span class="k">"dimensions"</span>: <span class="k">{</span> <span class="k">"mode"</span>: <span class="s">"car"</span> <span class="k">}</span>,
+  <span class="k">"methodology"</span>: <span class="k">{</span> <span class="k">"data_status"</span>: <span class="s">"modelled"</span>, <span class="k">"collection_method"</span>: <span class="s">"simulation"</span> <span class="k">}</span>,
+  <span class="k">"privacy"</span>: <span class="k">{</span> <span class="k">"privacy_level"</span>: <span class="s">"open_aggregate"</span> <span class="k">}</span>
+<span class="k">}</span></pre></div>
+    </div>
+  </section>
+
+  <!-- ======= Status / roadmap ======= -->
+  <section id="status">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Where this stands</p>
+        <h2>Working draft, in public review</h2>
+      </div>
+      <div class="status-row">
+        <span class="status-dot"></span>
+        <p class="muted" style="margin:0">Version 0.3 &middot; core model and vocabulary stable, open items tracked publicly, not yet a ratified 1.0.</p>
+      </div>
+      <div class="roadmap">
+        <div class="roadmap-item now">
+          <h4>Spec &amp; JSON Schema</h4>
+          <p class="muted">Normative conceptual model, JSON Schema, and worked examples for all six demand types.</p>
+        </div>
+        <div class="roadmap-item">
+          <h4>Reference validator &amp; CSV profile</h4>
+          <p class="muted">A permissively licensed validator, plus a tabular profile with defined flattening rules.</p>
+        </div>
+        <div class="roadmap-item">
+          <h4>Mapping guides</h4>
+          <p class="muted">Documented conversions to and from GTFS-ride, DATEX II, MDS, OMX, and MATSim outputs.</p>
+        </div>
+        <div class="roadmap-item">
+          <h4>Implementer registry</h4>
+          <p class="muted">A directory of organizations publishing or consuming MDES-formatted data — once there are enough to list.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Governance ======= -->
+  <section id="governance">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Governance</p>
+        <h2>Open by design, not by slogan</h2>
+      </div>
+      <ul class="gov-list">
+        <li>Openly governed — no single vendor controls direction</li>
+        <li>Publicly documented decisions and changelog</li>
+        <li>Implementation-driven — changes reviewed against real datasets</li>
+        <li>Versioned, with backward compatibility as a stated goal</li>
+        <li>Licensed for unrestricted public implementation</li>
+        <li>Proposals and issues handled in the open</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ======= CTA ======= -->
+  <section>
+    <div class="wrap">
+      <div class="cta-band">
+        <div>
+          <h3>Publishing or consuming mobility demand data?</h3>
+          <p>We're looking for early implementers to pressure-test the spec against real datasets before 1.0.</p>
+        </div>
+        <a href="#" class="btn btn-primary">Get in touch</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div>
+      <p class="wordmark" style="margin-bottom:0.4rem;">Mobility Demand Exchange Specification</p>
+      <p class="fine">An open specification for exchanging mobility demand data. Specification text is published under CC BY 4.0; reference tooling under MIT.</p>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="#scope">Specification</a></li>
+        <li><a href="#example">Schema &amp; examples</a></li>
+        <li><a href="#governance">Governance</a></li>
+        <li><a href="#">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
