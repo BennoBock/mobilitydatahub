@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Full text of the Mobility Demand Exchange Specification (MDES), version 0.3 draft.">
+<title>Specification — Mobility Demand Exchange Specification</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap header-inner">
+    <a href="index.html" class="wordmark"><strong>Mobility Demand</strong> Exchange Specification</a>
+    <nav>
+      <ul>
+        <li><a href="spec.html">Spec</a></li>
+        <li><a href="index.html#example">Schema</a></li>
+        <li><a href="index.html#status">Status</a></li>
+        <li><a href="index.html#governance">Governance</a></li>
+        <li><a href="https://github.com/BennoBock/mobilitydatahub" class="nav-cta">GitHub &#8599;</a></li>
+      </ul>
+    </nav>
+    <i class="mobile-toggle">&#9776;</i>
+  </div>
+</header>
+
+<main>
+  <section class="spec-page">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Specification &middot; Draft 0.3</p>
+        <h1>Mobility Demand Exchange Specification</h1>
+        <p class="muted">Full normative text of the specification.
+          <a href="SPEC.md" download>Download as Markdown (SPEC.md)</a> &middot;
+          <a href="https://github.com/BennoBock/mobilitydatahub">View on GitHub</a>
+        </p>
+      </div>
+      <div class="spec-doc">
+<p><strong>Working abbreviation:</strong> MDES <strong>Version:</strong> 0.3 Draft <strong>Status:</strong> Draft, revision 3 (see Changelog)</p>
+<h2 id="0-changelog">0. Changelog</h2>
+<p><strong>0.3</strong> (this revision):</p>
+<ul>
+<li>§12 mode tree: added <code>car_share</code>, <code>ride_share</code>, <code>bike_share</code> under <code>shared_mobility</code>, and <code>heavy_goods_vehicle</code>/<code>light_commercial</code> under <code>freight</code> — both branches were previously undifferentiated leaves, which didn't survive contact with real data (BASt's truck/van classes, a ride-share listing, a free-floating carsharing log all needed a specific leaf to map onto).</li>
+<li>§12 added <code>unclassified</code> as a <code>mode_class: aggregate</code> value, distinct from <code>all</code>: <code>all</code> means "aggregated across every mode this source distinguishes," <code>unclassified</code> means "observed, but which mode wasn't resolved" (e.g. BASt's <code>Son</code>/other vehicle-class column) — conflating the two would silently misrepresent an unknown as a deliberate rollup.</li>
+<li>§12 given the same publisher-extension clause §7.1 already gives units, closing that gap from the §25 open-items list.</li>
+<li>§14 <code>collection_method</code> vocabulary: added <code>scraped_service_log</code>, for sources built by scraping a public listing service (no other existing value fit — <code>data_fusion</code>/<code>administrative_record</code> both implied a different provenance).</li>
+</ul>
+<p><strong>0.2</strong> (previous revision):</p>
+<ul>
+<li>Renamed the routed-flow geometry model from "path" to <strong>route</strong> (§10, §5, §17) to remove its collision with <code>path</code> as a spatial-object <em>type</em> (§9). <code>path</code> now unambiguously means a physical alignment (a footpath, cycleway, shared-use trail) that can be observed at/against, distinct from the <em>route</em> a flow of trips follows.</li>
+<li>Added a sixth demand type, <strong><code>modal_share</code></strong> (§2.6, §6), for the common case where only an aggregated mode-share statistic is published — no underlying per-mode flow/count records exist or are being released alongside it (e.g. a national MiD mode-share table, a MATSim <code>modestats.csv</code> summary).</li>
+<li>Added a real <strong><code>denominator</code></strong> object to the measure model (§7.3), replacing the earlier unenforceable prose requirement that shares "must state" their denominator, included modes, etc. Required whenever <code>unit = percentage</code>/<code>rate</code> or <code>statistic = share</code>, for any demand type.</li>
+<li>§13 (Modal split) rewritten to show both the disaggregated pattern (multiple mode-tagged flow records) and the standalone <code>modal_share</code> pattern as equally valid, not the latter as a special case of the former.</li>
+<li>Known items raised in review but <strong>not</strong> addressed in this pass are tracked in the new Appendix (§25), not silently dropped.</li>
+</ul>
+<h2 id="1-purpose">1. Purpose</h2>
+<p>The Mobility Demand Exchange Specification defines a common, mode-neutral way to exchange observed, estimated, modelled, and synthetic mobility demand data.</p>
+<p>The specification supports demand represented at different levels of detail:</p>
+<ul>
+<li>counts at locations;</li>
+<li>trips originating from a place;</li>
+<li>trips arriving at a place;</li>
+<li>movements between origins and destinations;</li>
+<li>trips or aggregate movements with route geometries;</li>
+<li>demand disaggregated by transport mode and other dimensions;</li>
+<li>standalone aggregate mode-share statistics, published without the underlying disaggregated flows they may have been computed from.</li>
+</ul>
+<p>MDES is intended to make mobility-demand datasets easier to publish, combine, compare, validate, and convert between transport-analysis systems.</p>
+<h2 id="2-scope">2. Scope</h2>
+<p>Version 0.2 covers six demand-observation types:</p>
+<h3 id="21-count">2.1 Count</h3>
+<p>A quantity observed or estimated at a point, link, screenline, stop, station, or other spatial object.</p>
+<p>Examples include:</p>
+<ul>
+<li>vehicles crossing a road section;</li>
+<li>cyclists passing a counter;</li>
+<li>passengers boarding at a stop;</li>
+<li>pedestrians entering a station;</li>
+<li>vehicle occupancy.</li>
+</ul>
+<h3 id="22-origin-total">2.2 Origin total</h3>
+<p>A quantity of trips or movements beginning at a specified spatial object.</p>
+<p>Example:</p>
+<blockquote>
+<p>12,400 person-trips originated in zone A during an average weekday.</p>
+</blockquote>
+<h3 id="23-destination-total">2.3 Destination total</h3>
+<p>A quantity of trips or movements ending at a specified spatial object.</p>
+<p>Example:</p>
+<blockquote>
+<p>9,800 person-trips arrived in zone B between 07:00 and 10:00.</p>
+</blockquote>
+<h3 id="24-origindestination-flow">2.4 Origin–destination flow</h3>
+<p>A quantity moving between an origin and a destination.</p>
+<p>Example:</p>
+<blockquote>
+<p>2,300 bicycle trips travelled from zone A to zone B.</p>
+</blockquote>
+<h3 id="25-routed-flow">2.5 Routed flow</h3>
+<p>One or more trips between an origin and destination associated with a route (a geometry, a network-link sequence, or a timestamped trajectory).</p>
+<p>Example:</p>
+<blockquote>
+<p>450 car trips travelled from zone A to zone B using the specified road-link sequence.</p>
+</blockquote>
+<h3 id="26-modal-share">2.6 Modal share</h3>
+<p>An aggregated share of demand attributed to a transport mode (or other dimension value), within a stated reference population, area, and period, published on its own — without requiring the underlying per-mode flow, count, or total records it may have been computed from.</p>
+<p>Example:</p>
+<blockquote>
+<p>Of trips made by residents of Landkreis Grafschaft Bentheim on an average weekday in 2026, 42% were by car.</p>
+</blockquote>
+<p>This differs from disaggregating a <code>count</code>/<code>origin_total</code>/<code>destination_total</code>/<code>od_flow</code> by mode (§13): it does not require, and does not imply the existence of, matching per-mode absolute records. A dataset consisting of nothing but <code>modal_share</code> records — e.g. five rows, one per mode, for one area and period — is a complete, valid MDES dataset in its own right.</p>
+<h2 id="3-design-principles">3. Design principles</h2>
+<h3 id="31-mode-neutral">3.1 Mode-neutral</h3>
+<p>The core model must support walking, cycling, private vehicles, public transport, shared mobility, freight, aviation, maritime transport, and modes not yet defined.</p>
+<h3 id="32-aggregation-neutral">3.2 Aggregation-neutral</h3>
+<p>The same conceptual model should support:</p>
+<ul>
+<li>one observed trip;</li>
+<li>an expanded survey trip representing many trips;</li>
+<li>an aggregate OD flow;</li>
+<li>a modelled demand estimate;</li>
+<li>a count at a sensor;</li>
+<li>a standalone aggregate share with no underlying disaggregated records.</li>
+</ul>
+<h3 id="33-source-transparent">3.3 Source-transparent</h3>
+<p>Every observation must state whether it is:</p>
+<ul>
+<li>observed;</li>
+<li>reported;</li>
+<li>estimated;</li>
+<li>imputed;</li>
+<li>modelled;</li>
+<li>simulated;</li>
+<li>synthetic.</li>
+</ul>
+<h3 id="34-privacy-aware">3.4 Privacy-aware</h3>
+<p>The specification must support aggregation, suppression, spatial generalization, temporal generalization, and other privacy protections.</p>
+<p>It must not require personally identifiable information.</p>
+<h3 id="35-compatible-rather-than-replacement-oriented">3.5 Compatible rather than replacement-oriented</h3>
+<p>MDES should map to existing standards and formats where appropriate, including:</p>
+<ul>
+<li>OMX;</li>
+<li>GTFS and GTFS-ride;</li>
+<li>DATEX II;</li>
+<li>MDS;</li>
+<li>OGC Moving Features;</li>
+<li>GMNS;</li>
+<li>MATSim;</li>
+<li>SUMO;</li>
+<li>GeoJSON.</li>
+</ul>
+<p>MDES should not replace domain-specific standards that already serve their purpose well.</p>
+<h3 id="36-extensible">3.6 Extensible</h3>
+<p>Publishers must be able to add domain-specific fields without changing the meaning of the core model.</p>
+<h2 id="4-core-conceptual-model">4. Core conceptual model</h2>
+<p>Every demand record is a <code>DemandObservation</code>.</p>
+<pre class="text"><code>DemandObservation
+├── identity
+├── demand type
+├── measure
+├── time
+├── spatial references
+├── dimensions
+├── methodology
+├── quality
+├── provenance
+└── privacy</code></pre>
+<h2 id="5-minimum-required-fields">5. Minimum required fields</h2>
+<p>Every demand observation must contain:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td>Unique identifier within the dataset</td>
+</tr>
+<tr class="even">
+<td><code>demand_type</code></td>
+<td>Type of demand observation</td>
+</tr>
+<tr class="odd">
+<td><code>value</code></td>
+<td>Numeric quantity</td>
+</tr>
+<tr class="even">
+<td><code>unit</code></td>
+<td>Meaning of the quantity</td>
+</tr>
+<tr class="odd">
+<td><code>time</code></td>
+<td>Time instant, interval, or representative period</td>
+</tr>
+<tr class="even">
+<td><code>data_status</code></td>
+<td>Observed, estimated, modelled, or similar</td>
+</tr>
+<tr class="odd">
+<td><code>source</code></td>
+<td>Dataset or process that produced the record</td>
+</tr>
+</tbody>
+</table>
+<p>Depending on <code>demand_type</code>, the record must also contain:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Demand type</th>
+<th>Required spatial information</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>count</code></td>
+<td><code>location</code></td>
+</tr>
+<tr class="even">
+<td><code>origin_total</code></td>
+<td><code>origin</code></td>
+</tr>
+<tr class="odd">
+<td><code>destination_total</code></td>
+<td><code>destination</code></td>
+</tr>
+<tr class="even">
+<td><code>od_flow</code></td>
+<td><code>origin</code> and <code>destination</code></td>
+</tr>
+<tr class="odd">
+<td><code>routed_flow</code></td>
+<td><code>origin</code>, <code>destination</code>, and <code>route</code></td>
+</tr>
+<tr class="even">
+<td><code>modal_share</code></td>
+<td><code>spatial.scope</code> (optional — if absent, the share applies to the dataset's overall <code>geographic_coverage</code>, per <code>feed_info</code>/provenance metadata)</td>
+</tr>
+</tbody>
+</table>
+<p>Additionally, regardless of <code>demand_type</code>: whenever <code>unit</code> is <code>percentage</code> or <code>rate</code>, or <code>statistic</code> is <code>share</code>, the record must also contain a <code>denominator</code> object (§7.3).</p>
+<h2 id="6-initial-demand-type-vocabulary">6. Initial demand-type vocabulary</h2>
+<pre class="text"><code>count
+origin_total
+destination_total
+od_flow
+routed_flow
+modal_share</code></pre>
+<p>Future versions may introduce specialized types, but they must remain convertible to one of these core forms.</p>
+<h2 id="7-measure-model">7. Measure model</h2>
+<p>A measure contains:</p>
+<pre class="json"><code>{
+  &quot;value&quot;: 2300,
+  &quot;unit&quot;: &quot;person_trips&quot;,
+  &quot;statistic&quot;: &quot;estimated_total&quot;
+}</code></pre>
+<h3 id="71-initial-unit-vocabulary">7.1 Initial unit vocabulary</h3>
+<pre class="text"><code>persons
+person_trips
+vehicle_trips
+vehicles
+boardings
+alightings
+passenger_kilometres
+vehicle_kilometres
+tonnes
+tonne_kilometres
+percentage
+rate</code></pre>
+<p>Publishers may define additional units using namespaced identifiers.</p>
+<h3 id="72-statistical-meaning">7.2 Statistical meaning</h3>
+<p>The <code>statistic</code> field distinguishes values such as:</p>
+<pre class="text"><code>observed_count
+estimated_total
+modelled_total
+sample_count
+mean
+median
+rate
+share
+index</code></pre>
+<h3 id="73-denominator-model">7.3 Denominator model</h3>
+<p>Whenever <code>unit</code> is <code>percentage</code> or <code>rate</code>, or <code>statistic</code> is <code>share</code>, the measure must include a <code>denominator</code> object:</p>
+<pre class="json"><code>{
+  &quot;value&quot;: 0.42,
+  &quot;unit&quot;: &quot;percentage&quot;,
+  &quot;statistic&quot;: &quot;share&quot;,
+  &quot;denominator&quot;: {
+    &quot;population&quot;: &quot;residents&quot;,
+    &quot;included_modes&quot;: [&quot;car&quot;, &quot;public_transport&quot;, &quot;cycling&quot;, &quot;walking&quot;, &quot;other&quot;],
+    &quot;unknown_mode_treatment&quot;: &quot;excluded&quot;,
+    &quot;time_period&quot;: &quot;average_weekday_2026&quot;,
+    &quot;geographic_scope&quot;: &quot;zone:GrafschaftBentheim&quot;
+  }
+}</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>population</code></td>
+<td>Who or what is being counted, e.g. <code>residents</code>, <code>all_travelers</code>, <code>commuters</code></td>
+</tr>
+<tr class="even">
+<td><code>included_modes</code></td>
+<td>The complete set of modes the denominator sums over</td>
+</tr>
+<tr class="odd">
+<td><code>unknown_mode_treatment</code></td>
+<td>How trips of unrecorded/unclassified mode were handled: <code>excluded</code> | <code>included_as_other</code> | <code>redistributed</code></td>
+</tr>
+<tr class="even">
+<td><code>time_period</code></td>
+<td>The period the share is computed over</td>
+</tr>
+<tr class="odd">
+<td><code>geographic_scope</code></td>
+<td>The area the share applies to</td>
+</tr>
+</tbody>
+</table>
+<p>This applies equally to a mode share computed from disaggregated records and to a standalone <code>modal_share</code> observation (§2.6, §13) — in the latter case, <code>denominator</code> is the <em>only</em> place that context is recorded, since no sibling records exist to infer it from.</p>
+<h2 id="8-time-model">8. Time model</h2>
+<p>A record may describe:</p>
+<ul>
+<li>a single timestamp;</li>
+<li>a closed or half-open time interval;</li>
+<li>a recurring period;</li>
+<li>a representative period;</li>
+<li>a model year.</li>
+</ul>
+<p>Example:</p>
+<pre class="json"><code>{
+  &quot;start&quot;: &quot;2026-05-04T07:00:00+02:00&quot;,
+  &quot;end&quot;: &quot;2026-05-04T08:00:00+02:00&quot;,
+  &quot;time_zone&quot;: &quot;Europe/Berlin&quot;,
+  &quot;representation&quot;: &quot;observed_interval&quot;
+}</code></pre>
+<p>Representative periods may include:</p>
+<pre class="text"><code>average_weekday
+average_weekend_day
+typical_monday
+school_day
+annual_average_daily
+model_year</code></pre>
+<p>The exact dates used to calculate a representative period should be recorded in dataset metadata where available.</p>
+<h2 id="9-spatial-model">9. Spatial model</h2>
+<p>A spatial reference may identify:</p>
+<pre class="text"><code>point
+stop
+station
+node
+link
+screenline
+zone
+administrative_area
+grid_cell
+path</code></pre>
+<p><code>path</code> denotes a physical alignment — a defined pedestrian path, cycleway, or shared-use trail segment — usable as a stable location for a <code>count</code> or other observation. It is distinct from the <em>route</em> a flow of trips follows (§10), which is a derived trajectory computed or observed for a specific demand record, not a standing spatial object.</p>
+<p>A <code>modal_share</code> record (§2.6) may reference a spatial object via <code>spatial.scope</code> to mean "the reference area this share applies to" — this is neither an origin nor a destination, just the area/population the share is computed over.</p>
+<p>Spatial objects should have stable identifiers and may additionally include geometries.</p>
+<p>Example:</p>
+<pre class="json"><code>{
+  &quot;id&quot;: &quot;zone:A&quot;,
+  &quot;type&quot;: &quot;zone&quot;,
+  &quot;geometry&quot;: {
+    &quot;type&quot;: &quot;Polygon&quot;,
+    &quot;coordinates&quot;: []
+  }
+}</code></pre>
+<p>External references may use identifiers from systems such as:</p>
+<ul>
+<li>GTFS;</li>
+<li>GMNS;</li>
+<li>OpenStreetMap;</li>
+<li>national transport networks;</li>
+<li>census geographies;</li>
+<li>administrative boundary systems.</li>
+</ul>
+<p>The identifier system and version must be stated.</p>
+<h2 id="10-route-model">10. Route model</h2>
+<p>A routed flow may use one or more route representations.</p>
+<h3 id="101-geometry">10.1 Geometry</h3>
+<pre class="json"><code>{
+  &quot;representation&quot;: &quot;geometry&quot;,
+  &quot;geometry&quot;: {
+    &quot;type&quot;: &quot;LineString&quot;,
+    &quot;coordinates&quot;: []
+  }
+}</code></pre>
+<h3 id="102-network-link-sequence">10.2 Network-link sequence</h3>
+<pre class="json"><code>{
+  &quot;representation&quot;: &quot;network_sequence&quot;,
+  &quot;network_id&quot;: &quot;example-network&quot;,
+  &quot;network_version&quot;: &quot;2026-01&quot;,
+  &quot;link_ids&quot;: [&quot;101&quot;, &quot;102&quot;, &quot;205&quot;, &quot;301&quot;]
+}</code></pre>
+<h3 id="103-timestamped-trajectory">10.3 Timestamped trajectory</h3>
+<pre class="json"><code>{
+  &quot;representation&quot;: &quot;trajectory&quot;,
+  &quot;positions&quot;: [
+    {
+      &quot;time&quot;: &quot;2026-05-04T07:12:00+02:00&quot;,
+      &quot;longitude&quot;: 13.4049,
+      &quot;latitude&quot;: 52.5200
+    }
+  ]
+}</code></pre>
+<p>Every route should state its derivation:</p>
+<pre class="text"><code>observed
+reported
+map_matched
+inferred
+modelled
+shortest_path
+representative
+synthetic</code></pre>
+<h2 id="11-dimensions">11. Dimensions</h2>
+<p>Demand observations may be disaggregated using dimensions.</p>
+<p>Initial dimensions include:</p>
+<pre class="text"><code>mode
+trip_purpose
+vehicle_type
+population_segment
+user_type
+direction
+occupancy
+service
+operator
+fare_product
+commodity</code></pre>
+<p>Dimensions must not change the fundamental meaning of the measure.</p>
+<h2 id="12-mode-model">12. Mode model</h2>
+<p>Mode is represented as a hierarchical classification.</p>
+<p>Example:</p>
+<pre class="text"><code>all
+├── active
+│   ├── walking
+│   ├── cycling
+│   └── micromobility
+├── private_motorized
+│   ├── car_driver
+│   ├── car_passenger
+│   └── motorcycle
+├── public_transport
+│   ├── bus
+│   ├── tram
+│   ├── metro
+│   ├── rail
+│   └── ferry
+├── shared_mobility
+│   ├── car_share
+│   ├── ride_share
+│   └── bike_share
+├── freight
+│   ├── light_commercial
+│   └── heavy_goods_vehicle
+└── unclassified</code></pre>
+<p><code>unclassified</code> (<code>mode_class: aggregate</code>) means an observation counted a trip/vehicle but could not resolve which mode it was — distinct from <code>all</code>, which means a deliberate aggregate across every mode a source <em>does</em> distinguish. Using <code>all</code> for a genuinely unresolved observation would misrepresent it as an intentional rollup.</p>
+<p>A record may contain:</p>
+<ul>
+<li>a primary mode;</li>
+<li>a main mode;</li>
+<li>multiple modal stages;</li>
+<li>an unspecified or aggregated mode.</li>
+</ul>
+<p>The specification must distinguish a complete-trip mode from the mode of one stage within a multimodal trip.</p>
+<p>Publishers may add mode leaves under any existing branch using namespaced identifiers, the same way §7.1 allows publisher-defined units — the tree above is a starting vocabulary, not a closed one.</p>
+<h2 id="13-modal-split">13. Modal split</h2>
+<p>Modal split can be represented two ways, both first-class:</p>
+<p><strong>Disaggregated</strong> — demand observations of another type (<code>od_flow</code>, <code>origin_total</code>, <code>destination_total</code>, <code>count</code>), each carrying a <code>mode</code> dimension, from which shares can be computed by the consumer:</p>
+<pre class="json"><code>[
+  {
+    &quot;demand_type&quot;: &quot;od_flow&quot;,
+    &quot;origin&quot;: &quot;zone:A&quot;,
+    &quot;destination&quot;: &quot;zone:B&quot;,
+    &quot;mode&quot;: &quot;walking&quot;,
+    &quot;value&quot;: 400,
+    &quot;unit&quot;: &quot;person_trips&quot;
+  },
+  {
+    &quot;demand_type&quot;: &quot;od_flow&quot;,
+    &quot;origin&quot;: &quot;zone:A&quot;,
+    &quot;destination&quot;: &quot;zone:B&quot;,
+    &quot;mode&quot;: &quot;cycling&quot;,
+    &quot;value&quot;: 250,
+    &quot;unit&quot;: &quot;person_trips&quot;
+  }
+]</code></pre>
+<p><strong>Standalone</strong> (<code>modal_share</code>, §2.6) — the share itself is the only thing published; no per-mode absolute records exist or need to exist:</p>
+<pre class="json"><code>{
+  &quot;demand_type&quot;: &quot;modal_share&quot;,
+  &quot;dimensions&quot;: { &quot;mode&quot;: &quot;car&quot; },
+  &quot;spatial&quot;: { &quot;scope&quot;: { &quot;id&quot;: &quot;zone:GrafschaftBentheim&quot;, &quot;type&quot;: &quot;administrative_area&quot; } },
+  &quot;measure&quot;: {
+    &quot;value&quot;: 0.42,
+    &quot;unit&quot;: &quot;percentage&quot;,
+    &quot;statistic&quot;: &quot;share&quot;,
+    &quot;denominator&quot;: {
+      &quot;population&quot;: &quot;residents&quot;,
+      &quot;included_modes&quot;: [&quot;car&quot;, &quot;public_transport&quot;, &quot;cycling&quot;, &quot;walking&quot;, &quot;other&quot;],
+      &quot;unknown_mode_treatment&quot;: &quot;excluded&quot;,
+      &quot;time_period&quot;: &quot;average_weekday_2026&quot;,
+      &quot;geographic_scope&quot;: &quot;zone:GrafschaftBentheim&quot;
+    }
+  }
+}</code></pre>
+<p>A consumer must not assume the disaggregated pattern is always reconstructable from a <code>modal_share</code> dataset, and must not assume a <code>modal_share</code> dataset is incomplete for lacking the absolute counts behind it — this is the common shape of most publicly released mode-share statistics (household travel surveys, simulation summary outputs).</p>
+<h2 id="14-methodology-and-quality">14. Methodology and quality</h2>
+<p>Each observation should support:</p>
+<pre class="text"><code>collection_method
+data_status
+sample_size
+expansion_factor
+confidence_interval
+standard_error
+coverage
+missing_data_status
+quality_flag
+validation_method</code></pre>
+<p>Initial <code>collection_method</code> values may include:</p>
+<pre class="text"><code>manual_count
+automatic_counter
+ticketing_system
+vehicle_detection
+household_travel_survey
+intercept_survey
+mobile_device_data
+gps_trace
+operator_record
+administrative_record
+transport_model
+simulation
+data_fusion
+scraped_service_log</code></pre>
+<h2 id="15-provenance">15. Provenance</h2>
+<p>Dataset and record provenance should include:</p>
+<pre class="text"><code>publisher
+creator
+source_dataset
+source_record
+publication_date
+dataset_version
+processing_method
+processing_software
+license
+attribution
+contact</code></pre>
+<p>Derived records should identify their source records or source datasets where feasible.</p>
+<h2 id="16-privacy">16. Privacy</h2>
+<p>The specification should support:</p>
+<pre class="text"><code>privacy_level
+aggregation_method
+suppression_status
+suppression_reason
+spatial_resolution
+temporal_resolution
+minimum_group_size
+noise_method
+privacy_notes</code></pre>
+<p>Suggested privacy levels:</p>
+<pre class="text"><code>open_aggregate
+restricted_aggregate
+anonymized_record
+synthetic_record
+confidential</code></pre>
+<p>Raw device identifiers, names, addresses, account identifiers, and other direct personal identifiers are outside the core specification.</p>
+<h2 id="17-example-od-flow-record">17. Example OD-flow record</h2>
+<pre class="json"><code>{
+  &quot;schema_version&quot;: &quot;0.2&quot;,
+  &quot;id&quot;: &quot;obs-12345&quot;,
+  &quot;demand_type&quot;: &quot;od_flow&quot;,
+
+  &quot;measure&quot;: {
+    &quot;value&quot;: 2300,
+    &quot;unit&quot;: &quot;person_trips&quot;,
+    &quot;statistic&quot;: &quot;estimated_total&quot;
+  },
+
+  &quot;time&quot;: {
+    &quot;start&quot;: &quot;2026-05-04T07:00:00+02:00&quot;,
+    &quot;end&quot;: &quot;2026-05-04T08:00:00+02:00&quot;,
+    &quot;time_zone&quot;: &quot;Europe/Berlin&quot;,
+    &quot;representation&quot;: &quot;average_weekday&quot;
+  },
+
+  &quot;spatial&quot;: {
+    &quot;origin&quot;: {
+      &quot;id&quot;: &quot;zone:A&quot;,
+      &quot;type&quot;: &quot;zone&quot;
+    },
+    &quot;destination&quot;: {
+      &quot;id&quot;: &quot;zone:B&quot;,
+      &quot;type&quot;: &quot;zone&quot;
+    }
+  },
+
+  &quot;dimensions&quot;: {
+    &quot;mode&quot;: &quot;public_transport&quot;,
+    &quot;trip_purpose&quot;: &quot;all&quot;
+  },
+
+  &quot;methodology&quot;: {
+    &quot;data_status&quot;: &quot;estimated&quot;,
+    &quot;collection_method&quot;: &quot;household_travel_survey&quot;,
+    &quot;sample_size&quot;: 412,
+    &quot;expansion_factor_applied&quot;: true
+  },
+
+  &quot;provenance&quot;: {
+    &quot;publisher&quot;: &quot;Example Transport Authority&quot;,
+    &quot;source_dataset&quot;: &quot;Regional Travel Survey 2026&quot;,
+    &quot;license&quot;: &quot;CC-BY-4.0&quot;
+  },
+
+  &quot;privacy&quot;: {
+    &quot;privacy_level&quot;: &quot;open_aggregate&quot;
+  }
+}</code></pre>
+<h2 id="18-example-modal-share-record">18. Example modal-share record</h2>
+<pre class="json"><code>{
+  &quot;schema_version&quot;: &quot;0.2&quot;,
+  &quot;id&quot;: &quot;obs-67890&quot;,
+  &quot;demand_type&quot;: &quot;modal_share&quot;,
+
+  &quot;measure&quot;: {
+    &quot;value&quot;: 0.42,
+    &quot;unit&quot;: &quot;percentage&quot;,
+    &quot;statistic&quot;: &quot;share&quot;,
+    &quot;denominator&quot;: {
+      &quot;population&quot;: &quot;residents&quot;,
+      &quot;included_modes&quot;: [&quot;car&quot;, &quot;public_transport&quot;, &quot;cycling&quot;, &quot;walking&quot;, &quot;other&quot;],
+      &quot;unknown_mode_treatment&quot;: &quot;excluded&quot;,
+      &quot;time_period&quot;: &quot;average_weekday_2026&quot;,
+      &quot;geographic_scope&quot;: &quot;zone:GrafschaftBentheim&quot;
+    }
+  },
+
+  &quot;time&quot;: {
+    &quot;start&quot;: &quot;2026-01-01&quot;,
+    &quot;end&quot;: &quot;2026-12-31&quot;,
+    &quot;representation&quot;: &quot;annual_average_daily&quot;
+  },
+
+  &quot;spatial&quot;: {
+    &quot;scope&quot;: {
+      &quot;id&quot;: &quot;zone:GrafschaftBentheim&quot;,
+      &quot;type&quot;: &quot;administrative_area&quot;
+    }
+  },
+
+  &quot;dimensions&quot;: {
+    &quot;mode&quot;: &quot;car&quot;
+  },
+
+  &quot;methodology&quot;: {
+    &quot;data_status&quot;: &quot;modelled&quot;,
+    &quot;collection_method&quot;: &quot;simulation&quot;
+  },
+
+  &quot;provenance&quot;: {
+    &quot;publisher&quot;: &quot;Modalyzer&quot;,
+    &quot;source_dataset&quot;: &quot;Grafschaft Bentheim 2026 MATSim run — modestats.csv&quot;,
+    &quot;license&quot;: &quot;CC-BY-4.0&quot;
+  },
+
+  &quot;privacy&quot;: {
+    &quot;privacy_level&quot;: &quot;open_aggregate&quot;
+  }
+}</code></pre>
+<p>No sibling <code>od_flow</code>/<code>count</code> records back this number — the MATSim run's <code>modestats.csv</code> only ever reports the converged district-wide mode shares themselves, which is exactly the case §13's standalone pattern exists for.</p>
+<h2 id="19-version-02-implementation-profiles">19. Version 0.2 implementation profiles</h2>
+<p>Version 0.2 should define three implementable profiles.</p>
+<h3 id="profile-a-tabular-aggregate-demand">Profile A: Tabular aggregate demand</h3>
+<p>Designed for CSV, Parquet, and database tables.</p>
+<p>Supports:</p>
+<ul>
+<li>counts;</li>
+<li>origin totals;</li>
+<li>destination totals;</li>
+<li>OD flows;</li>
+<li>modal shares (disaggregated-by-mode or standalone).</li>
+</ul>
+<h3 id="profile-b-json-demand-records">Profile B: JSON demand records</h3>
+<p>Designed for APIs, document databases, and datasets with nested metadata.</p>
+<p>Supports all core demand types.</p>
+<h3 id="profile-c-routed-demand">Profile C: Routed demand</h3>
+<p>Designed for trip records and aggregate route flows.</p>
+<p>Supports:</p>
+<ul>
+<li>GeoJSON route geometries;</li>
+<li>network-link sequences;</li>
+<li>timestamped trajectories;</li>
+<li>route derivation metadata.</li>
+</ul>
+<h2 id="20-version-02-deliverables">20. Version 0.2 deliverables</h2>
+<p>The initial release should contain:</p>
+<ol type="1">
+<li>A normative conceptual specification.</li>
+<li>A JSON Schema.</li>
+<li>A CSV profile and data dictionary.</li>
+<li>A controlled vocabulary for modes, units, methods, and statuses.</li>
+<li>Six example datasets.</li>
+<li>Validation rules.</li>
+<li>Mapping guides for selected existing standards.</li>
+<li>A permissively licensed reference validator.</li>
+<li>A public issue and governance process.</li>
+</ol>
+<h2 id="21-initial-example-datasets">21. Initial example datasets</h2>
+<p>The test suite should include:</p>
+<ol type="1">
+<li>Bicycle-counter observations.</li>
+<li>Public-transport boarding and alighting counts.</li>
+<li>A zone-to-zone commuting matrix.</li>
+<li>A household travel-survey trip table.</li>
+<li>Modelled routed demand on a road network.</li>
+<li>A published aggregate modal-share table with no underlying disaggregated flows (e.g. a national or district-wide mode-share summary).</li>
+</ol>
+<p>A successful core model must represent all six without changing its fundamental structure.</p>
+<h2 id="22-initial-validation-rules">22. Initial validation rules</h2>
+<p>A record is invalid when:</p>
+<ul>
+<li>its <code>demand_type</code> is unknown;</li>
+<li>a required spatial reference is absent;</li>
+<li>its unit is missing;</li>
+<li>its time meaning is unspecified;</li>
+<li>its value is not numeric;</li>
+<li>a percentage/rate value or a <code>share</code> statistic lacks a <code>denominator</code> object;</li>
+<li>a route references an unidentified network;</li>
+<li>an estimated value is presented as observed;</li>
+<li>incompatible dimensions are combined;</li>
+<li>provenance is absent.</li>
+</ul>
+<p>Additional warnings should be produced for:</p>
+<ul>
+<li>negative demand values;</li>
+<li>percentages outside the expected range;</li>
+<li>overlapping categories;</li>
+<li>inconsistent modal totals;</li>
+<li>incomplete temporal coverage;</li>
+<li>unknown coordinate-reference systems;</li>
+<li>unresolved spatial identifiers.</li>
+</ul>
+<h2 id="23-governance-principles">23. Governance principles</h2>
+<p>The project should be:</p>
+<ul>
+<li>openly governed;</li>
+<li>publicly documented;</li>
+<li>implementation-driven;</li>
+<li>versioned;</li>
+<li>backward-conscious;</li>
+<li>independent of a single software vendor;</li>
+<li>licensed for unrestricted public implementation.</li>
+</ul>
+<p>Changes should be proposed through public issues and reviewed against real datasets.</p>
+<h2 id="24-definition-of-success">24. Definition of success</h2>
+<p>Version 0.3 succeeds when an implementer can use one model to publish and validate:</p>
+<ul>
+<li>a traffic count;</li>
+<li>a trip-origin total;</li>
+<li>a trip-destination total;</li>
+<li>an OD matrix;</li>
+<li>a mode-specific OD matrix;</li>
+<li>individual trip records;</li>
+<li>routed aggregate demand;</li>
+<li>a standalone aggregate mode-share statistic;</li>
+</ul>
+<p>while preserving the meaning, provenance, uncertainty, temporal basis, and privacy status of each dataset.</p>
+<h2 id="25-appendix-open-items-from-prior-review-not-addressed-in-this-revision">25. Appendix: open items from prior review, not addressed in this revision</h2>
+<p>Raised during review but out of scope for this pass — tracked here so they aren't silently lost:</p>
+<ul>
+<li><strong>Tabular flattening rules for Profile A.</strong> Nested objects (<code>spatial</code>, <code>time</code>, <code>dimensions</code>, <code>methodology</code>, <code>provenance</code>, <code>privacy</code>) have no defined column-naming convention for CSV/Parquet; two implementations of Profile A could produce incompatible layouts.</li>
+<li><strong>Multimodal trip legs.</strong> §12 requires distinguishing a complete-trip mode from a single stage's mode, but no leg/stage record type exists yet.</li>
+<li><strong>Time-representation ambiguity.</strong> §8/§17 don't state whether a dated interval tagged with a representative-period label (e.g. <code>average_weekday</code>) is one real sampled day or an arbitrary placeholder.</li>
+<li><strong>Profile boundary for <code>routed_flow</code>.</strong> Unclear whether a tabular (Profile A) file may ever carry a <code>routed_flow</code> record (e.g. a link-id list in one column), or whether that's strictly Profile C's territory.</li>
+<li><strong>Missing validation rule.</strong> §22 doesn't flag a <code>mode</code> value outside the declared taxonomy, unlike its equivalent checks for <code>demand_type</code> and spatial/network identifiers.</li>
+<li><strong><code>schema_version</code> placement.</strong> Present in the worked examples (§17, §18) but not listed in §5's normative minimum-fields table.</li>
+</ul>
+<p>Resolved in v0.3: mode taxonomy extensibility (§12 now has the same namespaced-extension clause as §7.1's units).</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <div>
+      <p class="wordmark" style="margin-bottom:0.4rem;">Mobility Demand Exchange Specification</p>
+      <p class="fine">An open specification for exchanging mobility demand data. Specification text is published under CC BY 4.0; reference tooling under MIT.</p>
+    </div>
+    <nav>
+      <ul>
+        <li><a href="index.html#scope">Specification</a></li>
+        <li><a href="index.html#example">Schema &amp; examples</a></li>
+        <li><a href="index.html#governance">Governance</a></li>
+        <li><a href="https://github.com/BennoBock/mobilitydatahub">GitHub</a></li>
+        <li><a href="mailto:mobilitydemandes@posteo.de">Contact</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
