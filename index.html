@@ -31,12 +31,12 @@
   <section class="hero">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Open specification &middot; Draft 0.3</p>
+        <p class="eyebrow">Open specification &middot; Draft 0.4</p>
         <h1>One shared format for how people move.</h1>
         <p class="lede">A mode-neutral, aggregation-neutral model for publishing mobility demand — counts, origin/destination flows, routed movements, and standalone mode-share statistics — so it can be validated, compared, and converted without a bespoke format per source.</p>
         <div class="hero-actions">
           <a href="spec.html" class="btn btn-primary">Read the specification</a>
-          <a href="SPEC.md" class="btn btn-ghost" download>Download spec (v0.3)</a>
+          <a href="SPEC.md" class="btn btn-ghost" download>Download spec (v0.4)</a>
           <a href="https://github.com/BennoBock/mobilitydatahub" class="btn btn-ghost">View on GitHub</a>
         </div>
       </div>
@@ -223,7 +223,16 @@
       <span class="k">"included_modes"</span>: [<span class="s">"car"</span>, <span class="s">"public_transport"</span>, <span class="s">"cycling"</span>, <span class="s">"walking"</span>, <span class="s">"other"</span>]
     <span class="k">}</span>
   <span class="k">}</span>,
-  <span class="k">"dimensions"</span>: <span class="k">{</span> <span class="k">"mode"</span>: <span class="s">"car"</span> <span class="k">}</span>,
+  <span class="k">"dimensions"</span>: <span class="k">{</span>
+    <span class="k">"mode_classification"</span>: <span class="k">{</span>
+      <span class="k">"role"</span>: <span class="s">"driver"</span>,
+      <span class="k">"vehicle"</span>: <span class="s">"car"</span>,
+      <span class="k">"propulsion"</span>: <span class="s">"combustion"</span>,
+      <span class="k">"access"</span>: <span class="s">"owned"</span>,
+      <span class="k">"operating_form"</span>: <span class="s">"individual"</span>,
+      <span class="k">"analytical_assignment"</span>: <span class="s">"miv"</span>
+    <span class="k">}</span>
+  <span class="k">}</span>,
   <span class="k">"methodology"</span>: <span class="k">{</span> <span class="k">"data_status"</span>: <span class="s">"modelled"</span>, <span class="k">"collection_method"</span>: <span class="s">"simulation"</span> <span class="k">}</span>,
   <span class="k">"privacy"</span>: <span class="k">{</span> <span class="k">"privacy_level"</span>: <span class="s">"open_aggregate"</span> <span class="k">}</span>
 <span class="k">}</span></pre></div>
@@ -239,7 +248,7 @@
       </div>
       <div class="status-row">
         <span class="status-dot"></span>
-        <p class="muted" style="margin:0">Version 0.3 &middot; core model and vocabulary stable, open items tracked publicly, not yet a ratified 1.0.</p>
+        <p class="muted" style="margin:0">Version 0.4 &middot; core model and vocabulary stable, open items tracked publicly, not yet a ratified 1.0.</p>
       </div>
       <div class="roadmap">
         <div class="roadmap-item now">

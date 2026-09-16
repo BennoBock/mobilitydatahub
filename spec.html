@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Full text of the Mobility Demand Exchange Specification (MDES), version 0.3 draft.">
+<meta name="description" content="Full text of the Mobility Demand Exchange Specification (MDES), version 0.4 draft.">
 <title>Specification — Mobility Demand Exchange Specification</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -29,7 +29,7 @@
   <section class="spec-page">
     <div class="wrap">
       <div class="section-head">
-        <p class="eyebrow">Specification &middot; Draft 0.3</p>
+        <p class="eyebrow">Specification &middot; Draft 0.4</p>
         <h1>Mobility Demand Exchange Specification</h1>
         <p class="muted">Full normative text of the specification.
           <a href="SPEC.md" download>Download as Markdown (SPEC.md)</a> &middot;
@@ -37,16 +37,22 @@
         </p>
       </div>
       <div class="spec-doc">
-<p><strong>Working abbreviation:</strong> MDES <strong>Version:</strong> 0.3 Draft <strong>Status:</strong> Draft, revision 3 (see Changelog)</p>
+<p><strong>Working abbreviation:</strong> MDES <strong>Version:</strong> 0.4 Draft <strong>Status:</strong> Draft, revision 4 (see Changelog)</p>
 <h2 id="0-changelog">0. Changelog</h2>
-<p><strong>0.3</strong> (this revision):</p>
+<p><strong>0.4</strong> (this revision):</p>
+<ul>
+<li>§12 split into 12.1/12.2: the mode tree (§12.1, unchanged) remains the required simple case, and a new §12.2 <strong>multi-dimensional mode classification</strong> lets a publisher additionally decompose an observation into <code>vehicle</code>, <code>propulsion</code>, <code>role</code>, <code>access</code>, <code>operating_form</code>, and <code>analytical_assignment</code> — separate, orthogonal attributes instead of one tree position. This addresses the taxi/e-scooter/carsharing problem the tree can't resolve on its own: the same physical trip is legitimately "public transport" in one national survey and "individual transport" in another, and a single-tree leaf can't hold both readings at once, only a decomposed classification can carry the ambiguity explicitly rather than forcing a premature choice.</li>
+<li>§14 methodology: added <code>source_category</code>, to record a record's original category label in the source dataset's own vocabulary (e.g. a traffic count's raw <code>pedestrian</code> class), distinct from and traceable against the record's own <code>mode</code>/<code>mode_classification</code> value.</li>
+<li>§25 appendix: added the open item that no reconciliation or validation rule yet exists between §12.1 tree leaves and §12.2's <code>analytical_assignment</code> vocabulary — carried forward rather than resolved in this pass.</li>
+</ul>
+<p><strong>0.3</strong>:</p>
 <ul>
 <li>§12 mode tree: added <code>car_share</code>, <code>ride_share</code>, <code>bike_share</code> under <code>shared_mobility</code>, and <code>heavy_goods_vehicle</code>/<code>light_commercial</code> under <code>freight</code> — both branches were previously undifferentiated leaves, which didn't survive contact with real data (BASt's truck/van classes, a ride-share listing, a free-floating carsharing log all needed a specific leaf to map onto).</li>
 <li>§12 added <code>unclassified</code> as a <code>mode_class: aggregate</code> value, distinct from <code>all</code>: <code>all</code> means "aggregated across every mode this source distinguishes," <code>unclassified</code> means "observed, but which mode wasn't resolved" (e.g. BASt's <code>Son</code>/other vehicle-class column) — conflating the two would silently misrepresent an unknown as a deliberate rollup.</li>
 <li>§12 given the same publisher-extension clause §7.1 already gives units, closing that gap from the §25 open-items list.</li>
 <li>§14 <code>collection_method</code> vocabulary: added <code>scraped_service_log</code>, for sources built by scraping a public listing service (no other existing value fit — <code>data_fusion</code>/<code>administrative_record</code> both implied a different provenance).</li>
 </ul>
-<p><strong>0.2</strong> (previous revision):</p>
+<p><strong>0.2</strong>:</p>
 <ul>
 <li>Renamed the routed-flow geometry model from "path" to <strong>route</strong> (§10, §5, §17) to remove its collision with <code>path</code> as a spatial-object <em>type</em> (§9). <code>path</code> now unambiguously means a physical alignment (a footpath, cycleway, shared-use trail) that can be observed at/against, distinct from the <em>route</em> a flow of trips follows.</li>
 <li>Added a sixth demand type, <strong><code>modal_share</code></strong> (§2.6, §6), for the common case where only an aggregated mode-share statistic is published — no underlying per-mode flow/count records exist or are being released alongside it (e.g. a national MiD mode-share table, a MATSim <code>modestats.csv</code> summary).</li>
@@ -437,7 +443,9 @@ operator
 fare_product
 commodity</code></pre>
 <p>Dimensions must not change the fundamental meaning of the measure.</p>
+<p><code>mode</code> takes a value from §12.1's tree. A record may additionally, or instead, carry <code>mode_classification</code> (§12.2), a decomposed object rather than a single tree value.</p>
 <h2 id="12-mode-model">12. Mode model</h2>
+<h3 id="121-simple-mode">12.1 Simple mode</h3>
 <p>Mode is represented as a hierarchical classification.</p>
 <p>Example:</p>
 <pre class="text"><code>all
@@ -473,6 +481,69 @@ commodity</code></pre>
 </ul>
 <p>The specification must distinguish a complete-trip mode from the mode of one stage within a multimodal trip.</p>
 <p>Publishers may add mode leaves under any existing branch using namespaced identifiers, the same way §7.1 allows publisher-defined units — the tree above is a starting vocabulary, not a closed one.</p>
+<h3 id="122-multi-dimensional-mode-classification">12.2 Multi-dimensional mode classification</h3>
+<p>A single tree position stops being mutually exclusive once electrification, sharing, and platform-mediated services are taken into account. The same taxi trip is counted as public transport in one national travel survey and as individual transport in another; the same trip on a borrowed e-bike differs from an owned one only in <code>access</code>, yet a tree forces both onto one leaf or none. Comparing datasets that made different choices under §12.1 means guessing which of several conflated attributes drove the choice.</p>
+<p>A publisher who needs their classification to stay comparable across surveys, tools, or jurisdictions may provide <code>dimensions.mode_classification</code> — an object that separates the attributes a single tree leaf conflates, using the observed person's role as the closest analogue to a "main mode":</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Answers</th>
+<th>Initial vocabulary</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>vehicle</code></td>
+<td>What physically moves the person, if anything?</td>
+<td><code>none</code>, <code>bicycle</code>, <code>car</code>, <code>bus</code>, <code>rail</code>, <code>ship</code>, <code>aircraft</code>, <code>skateboard</code>, ...</td>
+</tr>
+<tr class="even">
+<td><code>propulsion</code></td>
+<td>What produces the movement?</td>
+<td><code>human_power</code>, <code>electric_assist</code>, <code>battery_electric</code>, <code>combustion</code>, <code>hybrid</code></td>
+</tr>
+<tr class="odd">
+<td><code>role</code></td>
+<td>What role does the observed person have?</td>
+<td><code>pedestrian</code>, <code>rider</code>, <code>driver</code>, <code>passenger</code>, <code>public_transport_passenger</code></td>
+</tr>
+<tr class="even">
+<td><code>access</code></td>
+<td>How is the vehicle accessed?</td>
+<td><code>owned</code>, <code>household</code>, <code>shared</code>, <code>rented</code></td>
+</tr>
+<tr class="odd">
+<td><code>operating_form</code></td>
+<td>How is the trip organised?</td>
+<td><code>individual</code>, <code>scheduled_service</code>, <code>taxi</code>, <code>ride_hailing</code>, <code>demand_responsive</code></td>
+</tr>
+<tr class="even">
+<td><code>analytical_assignment</code></td>
+<td>Which headline modal-split group does this observation count toward?</td>
+<td><code>walking</code>, <code>cycling</code>, <code>miv</code>, <code>public_transport</code>, <code>other</code></td>
+</tr>
+</tbody>
+</table>
+<p>As with §7.1 and §12.1, each vocabulary is a starting point, extensible with namespaced publisher-defined values.</p>
+<p><code>analytical_assignment</code> is intentionally a separate, smaller vocabulary from §12.1's tree, not an alias for its top-level branch names: it exists to answer one question — which of the handful of groups a modal-split headline figure usually reports does this observation belong to — while the tree serves finer-grained bookkeeping. A publisher using both must state how their §12.1 leaves map onto §12.2's <code>analytical_assignment</code> values (e.g. whether <code>shared_mobility/car_share</code> counts as <code>miv</code> or <code>other</code>); MDES does not mandate one mapping, since national practice on this point genuinely differs (this is the same taxi/carsharing ambiguity <code>analytical_assignment</code> exists to make explicit instead of hiding).</p>
+<p>Example — a person riding a borrowed, electrically assisted skateboard, registered as a pedestrian by a passing traffic counter:</p>
+<pre class="json"><code>{
+  &quot;dimensions&quot;: {
+    &quot;mode_classification&quot;: {
+      &quot;role&quot;: &quot;rider&quot;,
+      &quot;vehicle&quot;: &quot;skateboard&quot;,
+      &quot;propulsion&quot;: &quot;electric_assist&quot;,
+      &quot;access&quot;: &quot;household&quot;,
+      &quot;operating_form&quot;: &quot;individual&quot;,
+      &quot;analytical_assignment&quot;: &quot;walking&quot;
+    }
+  },
+  &quot;methodology&quot;: {
+    &quot;source_category&quot;: &quot;pedestrian&quot;
+  }
+}</code></pre>
+<p><code>dimensions.mode</code> (§11, §12.1) and <code>dimensions.mode_classification</code> may be used independently or together. When both are present on the same record, <code>mode_classification.analytical_assignment</code> should be consistent with <code>mode</code>'s top-level branch, allowing for <code>analytical_assignment</code> splitting <code>active</code> into <code>walking</code>/<code>cycling</code> where the tree does not.</p>
 <h2 id="13-modal-split">13. Modal split</h2>
 <p>Modal split can be represented two ways, both first-class:</p>
 <p><strong>Disaggregated</strong> — demand observations of another type (<code>od_flow</code>, <code>origin_total</code>, <code>destination_total</code>, <code>count</code>), each carrying a <code>mode</code> dimension, from which shares can be computed by the consumer:</p>
@@ -524,7 +595,9 @@ standard_error
 coverage
 missing_data_status
 quality_flag
-validation_method</code></pre>
+validation_method
+source_category</code></pre>
+<p><code>source_category</code> records the record's original category label in the source dataset's own vocabulary (e.g. a traffic count's raw <code>pedestrian</code> class) — kept distinct from, and traceable against, the record's own <code>mode</code>/<code>mode_classification</code> (§12) so a reclassification into MDES's vocabulary never silently discards what the source actually said.</p>
 <p>Initial <code>collection_method</code> values may include:</p>
 <pre class="text"><code>manual_count
 automatic_counter
@@ -761,7 +834,7 @@ confidential</code></pre>
 </ul>
 <p>Changes should be proposed through public issues and reviewed against real datasets.</p>
 <h2 id="24-definition-of-success">24. Definition of success</h2>
-<p>Version 0.3 succeeds when an implementer can use one model to publish and validate:</p>
+<p>Version 0.4 succeeds when an implementer can use one model to publish and validate:</p>
 <ul>
 <li>a traffic count;</li>
 <li>a trip-origin total;</li>
@@ -782,8 +855,10 @@ confidential</code></pre>
 <li><strong>Profile boundary for <code>routed_flow</code>.</strong> Unclear whether a tabular (Profile A) file may ever carry a <code>routed_flow</code> record (e.g. a link-id list in one column), or whether that's strictly Profile C's territory.</li>
 <li><strong>Missing validation rule.</strong> §22 doesn't flag a <code>mode</code> value outside the declared taxonomy, unlike its equivalent checks for <code>demand_type</code> and spatial/network identifiers.</li>
 <li><strong><code>schema_version</code> placement.</strong> Present in the worked examples (§17, §18) but not listed in §5's normative minimum-fields table.</li>
+<li><strong>No §12.1/§12.2 reconciliation rule.</strong> §12.2 requires a stated mapping from §12.1 tree leaves to <code>analytical_assignment</code> values but doesn't define its shape, and §22 has no validation rule catching a record where <code>mode</code> and <code>mode_classification.analytical_assignment</code> disagree.</li>
 </ul>
-<p>Resolved in v0.3: mode taxonomy extensibility (§12 now has the same namespaced-extension clause as §7.1's units).</p>
+<p>Resolved in v0.3: mode taxonomy extensibility (§12.1 now has the same namespaced-extension clause as §7.1's units).</p>
+<p>Resolved in v0.4: multi-dimensional mode classification (§12.2), addressing the taxi/carsharing/e-scooter cross-survey ambiguity previously left to §12.1's single tree.</p>
       </div>
     </div>
   </section>

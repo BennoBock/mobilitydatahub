@@ -1,12 +1,33 @@
 # Mobility Demand Exchange Specification
 
 **Working abbreviation:** MDES
-**Version:** 0.3 Draft
-**Status:** Draft, revision 3 (see Changelog)
+**Version:** 0.4 Draft
+**Status:** Draft, revision 4 (see Changelog)
 
 ## 0. Changelog
 
-**0.3** (this revision):
+**0.4** (this revision):
+- §12 split into 12.1/12.2: the mode tree (§12.1, unchanged) remains the
+  required simple case, and a new §12.2 **multi-dimensional mode
+  classification** lets a publisher additionally decompose an observation
+  into `vehicle`, `propulsion`, `role`, `access`, `operating_form`, and
+  `analytical_assignment` — separate, orthogonal attributes instead of one
+  tree position. This addresses the taxi/e-scooter/carsharing problem the
+  tree can't resolve on its own: the same physical trip is legitimately
+  "public transport" in one national survey and "individual transport" in
+  another, and a single-tree leaf can't hold both readings at once, only a
+  decomposed classification can carry the ambiguity explicitly rather than
+  forcing a premature choice.
+- §14 methodology: added `source_category`, to record a record's original
+  category label in the source dataset's own vocabulary (e.g. a traffic
+  count's raw `pedestrian` class), distinct from and traceable against the
+  record's own `mode`/`mode_classification` value.
+- §25 appendix: added the open item that no reconciliation or validation
+  rule yet exists between §12.1 tree leaves and §12.2's
+  `analytical_assignment` vocabulary — carried forward rather than resolved
+  in this pass.
+
+**0.3** (previous revision):
 - §12 mode tree: added `car_share`, `ride_share`, `bike_share` under
   `shared_mobility`, and `heavy_goods_vehicle`/`light_commercial` under
   `freight` — both branches were previously undifferentiated leaves, which
@@ -25,7 +46,7 @@
   value fit — `data_fusion`/`administrative_record` both implied a
   different provenance).
 
-**0.2** (previous revision):
+**0.2**:
 - Renamed the routed-flow geometry model from "path" to **route** (§10, §5,
   §17) to remove its collision with `path` as a spatial-object *type* (§9).
   `path` now unambiguously means a physical alignment (a footpath, cycleway,
@@ -480,7 +501,13 @@ commodity
 
 Dimensions must not change the fundamental meaning of the measure.
 
+`mode` takes a value from §12.1's tree. A record may additionally, or
+instead, carry `mode_classification` (§12.2), a decomposed object rather
+than a single tree value.
+
 ## 12. Mode model
+
+### 12.1 Simple mode
 
 Mode is represented as a hierarchical classification.
 
@@ -530,6 +557,71 @@ The specification must distinguish a complete-trip mode from the mode of one sta
 Publishers may add mode leaves under any existing branch using namespaced
 identifiers, the same way §7.1 allows publisher-defined units — the tree
 above is a starting vocabulary, not a closed one.
+
+### 12.2 Multi-dimensional mode classification
+
+A single tree position stops being mutually exclusive once electrification,
+sharing, and platform-mediated services are taken into account. The same
+taxi trip is counted as public transport in one national travel survey and
+as individual transport in another; the same trip on a borrowed e-bike
+differs from an owned one only in `access`, yet a tree forces both onto one
+leaf or none. Comparing datasets that made different choices under §12.1
+means guessing which of several conflated attributes drove the choice.
+
+A publisher who needs their classification to stay comparable across
+surveys, tools, or jurisdictions may provide `dimensions.mode_classification`
+— an object that separates the attributes a single tree leaf conflates,
+using the observed person's role as the closest analogue to a "main mode":
+
+| Field | Answers | Initial vocabulary |
+| --- | --- | --- |
+| `vehicle` | What physically moves the person, if anything? | `none`, `bicycle`, `car`, `bus`, `rail`, `ship`, `aircraft`, `skateboard`, ... |
+| `propulsion` | What produces the movement? | `human_power`, `electric_assist`, `battery_electric`, `combustion`, `hybrid` |
+| `role` | What role does the observed person have? | `pedestrian`, `rider`, `driver`, `passenger`, `public_transport_passenger` |
+| `access` | How is the vehicle accessed? | `owned`, `household`, `shared`, `rented` |
+| `operating_form` | How is the trip organised? | `individual`, `scheduled_service`, `taxi`, `ride_hailing`, `demand_responsive` |
+| `analytical_assignment` | Which headline modal-split group does this observation count toward? | `walking`, `cycling`, `miv`, `public_transport`, `other` |
+
+As with §7.1 and §12.1, each vocabulary is a starting point, extensible with
+namespaced publisher-defined values.
+
+`analytical_assignment` is intentionally a separate, smaller vocabulary from
+§12.1's tree, not an alias for its top-level branch names: it exists to
+answer one question — which of the handful of groups a modal-split headline
+figure usually reports does this observation belong to — while the tree
+serves finer-grained bookkeeping. A publisher using both must state how
+their §12.1 leaves map onto §12.2's `analytical_assignment` values (e.g.
+whether `shared_mobility/car_share` counts as `miv` or `other`); MDES does
+not mandate one mapping, since national practice on this point genuinely
+differs (this is the same taxi/carsharing ambiguity `analytical_assignment`
+exists to make explicit instead of hiding).
+
+Example — a person riding a borrowed, electrically assisted skateboard,
+registered as a pedestrian by a passing traffic counter:
+
+```json
+{
+  "dimensions": {
+    "mode_classification": {
+      "role": "rider",
+      "vehicle": "skateboard",
+      "propulsion": "electric_assist",
+      "access": "household",
+      "operating_form": "individual",
+      "analytical_assignment": "walking"
+    }
+  },
+  "methodology": {
+    "source_category": "pedestrian"
+  }
+}
+```
+
+`dimensions.mode` (§11, §12.1) and `dimensions.mode_classification` may be
+used independently or together. When both are present on the same record,
+`mode_classification.analytical_assignment` should be consistent with
+`mode`'s top-level branch, allowing for `analytical_assignment` splitting
+`active` into `walking`/`cycling` where the tree does not.
 
 ## 13. Modal split
 
@@ -600,7 +692,14 @@ coverage
 missing_data_status
 quality_flag
 validation_method
+source_category
 ```
+
+`source_category` records the record's original category label in the
+source dataset's own vocabulary (e.g. a traffic count's raw `pedestrian`
+class) — kept distinct from, and traceable against, the record's own
+`mode`/`mode_classification` (§12) so a reclassification into MDES's
+vocabulary never silently discards what the source actually said.
 
 Initial `collection_method` values may include:
 
@@ -885,7 +984,7 @@ Changes should be proposed through public issues and reviewed against real datas
 
 ## 24. Definition of success
 
-Version 0.3 succeeds when an implementer can use one model to publish and validate:
+Version 0.4 succeeds when an implementer can use one model to publish and validate:
 
 * a traffic count;
 * a trip-origin total;
@@ -920,6 +1019,14 @@ aren't silently lost:
   spatial/network identifiers.
 - **`schema_version` placement.** Present in the worked examples (§17, §18)
   but not listed in §5's normative minimum-fields table.
+- **No §12.1/§12.2 reconciliation rule.** §12.2 requires a stated mapping
+  from §12.1 tree leaves to `analytical_assignment` values but doesn't
+  define its shape, and §22 has no validation rule catching a record where
+  `mode` and `mode_classification.analytical_assignment` disagree.
 
-Resolved in v0.3: mode taxonomy extensibility (§12 now has the same
+Resolved in v0.3: mode taxonomy extensibility (§12.1 now has the same
 namespaced-extension clause as §7.1's units).
+
+Resolved in v0.4: multi-dimensional mode classification (§12.2), addressing
+the taxi/carsharing/e-scooter cross-survey ambiguity previously left to
+§12.1's single tree.
